@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>Code</title>
+    <link rel="stylesheet" href="code-styles.css">
+    <script src="myscripts.js"></script>
+</head>
+
+<body>
+
+<div class="header">
+    <div class="title-container">
+        <h1 class="main-title">Code Sharing Platform</h1>
+    </div>
+    <div class="secondary-title-container">
+        <h2 class="secondary-title">Put your genius piece of code on the wall for everyone to admire!</h2>
+    </div>
+    <div class="coding-logo-container">
+        <h1 class="coding-logo" href="/code">&lt&gt</h1>
+    </div>
+    <div class="new-code-link-container">
+        <a class="code-list-link" href="/code">View Code List</a>
+        <a class="new-code-link" href="/code/new">Publish Your Code</a>
+    </div>
+</div>
+
+<div class="main-body">
+    <div class="body-box">
+        <pre><span id="load_date"><span th:utext="${dateTimeStamp}"></span></span></pre>
+        <pre id="code_snippet"><span th:utext="${codeBody}"></span></pre>
+    </div>
+</div>
+
+<div class="footer">
+    <div class="footer-text-container">
+        <pre class="footer-text">2020    -    Made with love by Bogdan Enache</pre>
+    </div>
+</div>
+
+</body>
+
+</html>
