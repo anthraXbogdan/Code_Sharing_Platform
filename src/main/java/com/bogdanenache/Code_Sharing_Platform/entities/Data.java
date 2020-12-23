@@ -1,7 +1,7 @@
 package com.bogdanenache.Code_Sharing_Platform.entities;
 
 public class Data {
-
+    private int id;
     private String code;
     private String date;
 
@@ -19,5 +19,13 @@ public class Data {
 
     public void setDate(String date) {
         this.date = date;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 }

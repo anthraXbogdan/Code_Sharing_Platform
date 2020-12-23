@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.w3.org/1999/xhtml">
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
-    <title>Create</title>
-    <link th:href="@{/createCode-styles.css}" rel="stylesheet" />
+    <title>Latest</title>
+    <link th:href="@{/code-styles.css}" rel="stylesheet" />
     <script type="text/javascript" th:src="@{/myscripts.js}"></script>
 </head>
 
@@ -26,11 +26,12 @@
 </div>
 
 <div class="main-body">
-    <div>
-        <textarea id="code_snippet" class="text-area" spellcheck="false">//put your code here</textarea>
-        <div class="button-area">
-            <button class="submit-button" id="send_snippet" type="submit" onclick="send()">Submit</button>
-        </div>
+    <div class="body-box" >
+        <tr th:each="data: ${latestTenData}">
+            <pre><span id="load_date"><span th:text="${data.date}"></span></span></pre>
+            <pre id="code_snippet"><span th:text="${data.code}"></span></pre>
+        </tr>
+
     </div>
 </div>
 
@@ -41,4 +42,5 @@
 </div>
 
 </body>
+
 </html>

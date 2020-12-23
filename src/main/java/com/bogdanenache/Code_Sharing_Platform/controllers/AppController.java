@@ -1,26 +1,20 @@
 package com.bogdanenache.Code_Sharing_Platform.controllers;
 
 import com.bogdanenache.Code_Sharing_Platform.entities.Data;
-import com.bogdanenache.Code_Sharing_Platform.entities.EmptyClass;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 
 @RestController
 public class AppController {
-
-    private final Data[] dataList = new Data[1];
+    private final ArrayList<Data> dataList = new ArrayList<>();
 
     public AppController() {
-        Data data = new Data();
-        data.setCode("plm");
-        data.setDate(getDateTimeStamp());
-        dataList[0] = data;
     }
 
     public String getDateTimeStamp() {
@@ -32,26 +26,50 @@ public class AppController {
     }
 
     @PostMapping(value = "/api/code/new", consumes = "application/json")
-    public EmptyClass postJsonData(@RequestBody Data data, EmptyClass emptyClass) {
+    public  String postJsonData(@RequestBody Data data) throws JSONException {
         data.setDate(getDateTimeStamp());
-        dataList[0] = data;
+        data.setId(dataList.size() + 1);
+        dataList.add(data);
 
-        return emptyClass;
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("id", data.getId());
+
+        return jsonObject.toString();
     }
 
-    @GetMapping(value = "/api/code")
-    public Data getJsonData(HttpServletResponse response) {
+    @GetMapping(value = "/api/code/{id}")
+    public Data getJsonData(HttpServletResponse response,  @PathVariable int id) {
         response.addHeader("Content-Type", "application/json");
 
-        return dataList[0];
+        return dataList.get(id - 1);
     }
 
-    @GetMapping(value = "/code")
-    public ModelAndView getHtml(HttpServletResponse response) {
+    @GetMapping(value = "/api/code/latest")
+    public ArrayList<Data> getLatestData() {
+        ArrayList<Data> latestData = new ArrayList<>();
+
+        for (int i = dataList.size() -1; i >= 0; i--) {
+            latestData.add(dataList.get(i));
+        }
+
+        ArrayList<Data> latestTenData = new ArrayList<>();
+
+        if (latestData.size() >= 10) {
+            for (int i = 0 ; i < 10; i++) {
+                latestTenData.add(latestData.get(i));
+            }
+            return latestTenData;
+        }
+        return latestData;
+    }
+
+
+    @GetMapping(value = "/code/{id}")
+    public ModelAndView getHtml(HttpServletResponse response, @PathVariable int id) {
         response.addHeader("Content-Type", "text/html");
 
-        String codeBody = dataList[0].getCode();
-        String codeDate = dataList[0].getDate();
+        String codeDate = dataList.get(id - 1).getDate();
+        String codeBody = dataList.get(id - 1).getCode();
 
         ModelAndView model = new ModelAndView();
 
@@ -69,6 +87,32 @@ public class AppController {
         ModelAndView model = new ModelAndView();
 
         model.setViewName("createCode");
+        return model;
+    }
+
+    @GetMapping(value = "/code/latest")
+    public ModelAndView latestCode() {
+        ModelAndView model = new ModelAndView();
+
+        ArrayList<Data> latestData = new ArrayList<>();
+
+        for (int i = dataList.size() -1; i >= 0; i--) {
+            latestData.add(dataList.get(i));
+        }
+
+        ArrayList<Data> latestTenData = new ArrayList<>();
+
+        if (latestData.size() >= 10) {
+            for (int i = 0 ; i < 10; i++) {
+                latestTenData.add(latestData.get(i));
+            }
+            model.addObject("latestTenData", latestTenData);
+        } else {
+            latestTenData.addAll(latestData);
+            model.addObject("latestTenData", latestTenData);
+        }
+
+        model.setViewName("latestCodes");
         return model;
     }
 
