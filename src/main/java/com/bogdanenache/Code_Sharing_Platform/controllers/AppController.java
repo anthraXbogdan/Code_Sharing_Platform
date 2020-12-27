@@ -76,11 +76,12 @@ public class AppController {
 
         String codeDate = data.getDate();
         String codeBody = data.getCode();
+        String replaced = codeBody.replaceAll("<", "&lt");
 
         ModelAndView model = new ModelAndView();
 
         model.addObject("dateTimeStamp", codeDate);
-        model.addObject("codeBody", codeBody);
+        model.addObject("codeBody", replaced);
         model.setViewName("code");
 
         return model;
