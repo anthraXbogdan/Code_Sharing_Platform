@@ -1,18 +1,23 @@
 package com.bogdanenache.Code_Sharing_Platform.controllers;
 
 import com.bogdanenache.Code_Sharing_Platform.entities.Data;
+import com.bogdanenache.Code_Sharing_Platform.repositories.DataRepository;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Optional;
 
 @RestController
 public class AppController {
-    private final ArrayList<Data> dataList = new ArrayList<>();
+
+    @Autowired
+    private DataRepository dataRepository;
 
     public AppController() {
     }
@@ -28,37 +33,36 @@ public class AppController {
     @PostMapping(value = "/api/code/new", consumes = "application/json")
     public  String postJsonData(@RequestBody Data data) throws JSONException {
         data.setDate(getDateTimeStamp());
-        data.setId(dataList.size() + 1);
-        dataList.add(data);
+        data.setCodeID("" + (dataRepository.count() + 1));
+        dataRepository.save(data);
 
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("id", data.getId());
+        jsonObject.put("id", data.getCodeID());
 
         return jsonObject.toString();
     }
 
     @GetMapping(value = "/api/code/{id}")
-    public Data getJsonData(HttpServletResponse response,  @PathVariable int id) {
+    public Data getJsonData(HttpServletResponse response, @PathVariable String id) {
         response.addHeader("Content-Type", "application/json");
 
-        return dataList.get(id - 1);
+        return dataRepository.findByCodeID(id);
     }
 
     @GetMapping(value = "/api/code/latest")
     public ArrayList<Data> getLatestData() {
         ArrayList<Data> latestData = new ArrayList<>();
 
-        for (int i = dataList.size() -1; i >= 0; i--) {
-            latestData.add(dataList.get(i));
-        }
-
-        ArrayList<Data> latestTenData = new ArrayList<>();
-
-        if (latestData.size() >= 10) {
-            for (int i = 0 ; i < 10; i++) {
-                latestTenData.add(latestData.get(i));
+        if (dataRepository.count() < 10) {
+            for (long i = dataRepository.count(); i > 0; i--) {
+                latestData.add(dataRepository.findByCodeID("" + i));
             }
-            return latestTenData;
+        } else {
+            long start = dataRepository.count() - 10;
+
+            for (long i = dataRepository.count(); i > start; i--) {
+                latestData.add(dataRepository.findByCodeID("" + i));
+            }
         }
         return latestData;
     }
@@ -68,8 +72,10 @@ public class AppController {
     public ModelAndView getHtml(HttpServletResponse response, @PathVariable int id) {
         response.addHeader("Content-Type", "text/html");
 
-        String codeDate = dataList.get(id - 1).getDate();
-        String codeBody = dataList.get(id - 1).getCode();
+        Data data = dataRepository.findByCodeID("" + id);
+
+        String codeDate = data.getDate();
+        String codeBody = data.getCode();
 
         ModelAndView model = new ModelAndView();
 
@@ -90,28 +96,26 @@ public class AppController {
         return model;
     }
 
+
     @GetMapping(value = "/code/latest")
     public ModelAndView latestCode() {
         ModelAndView model = new ModelAndView();
 
         ArrayList<Data> latestData = new ArrayList<>();
 
-        for (int i = dataList.size() -1; i >= 0; i--) {
-            latestData.add(dataList.get(i));
-        }
-
-        ArrayList<Data> latestTenData = new ArrayList<>();
-
-        if (latestData.size() >= 10) {
-            for (int i = 0 ; i < 10; i++) {
-                latestTenData.add(latestData.get(i));
+        if (dataRepository.count() < 10) {
+            for (long i = dataRepository.count(); i > 0; i--) {
+                latestData.add(dataRepository.findByCodeID("" + i));
             }
-            model.addObject("latestTenData", latestTenData);
         } else {
-            latestTenData.addAll(latestData);
-            model.addObject("latestTenData", latestTenData);
+            long start = dataRepository.count() - 10;
+
+            for (long i = dataRepository.count(); i > start; i--) {
+                latestData.add(dataRepository.findByCodeID("" + i));
+            }
         }
 
+        model.addObject("latestData", latestData);
         model.setViewName("latestCodes");
         return model;
     }

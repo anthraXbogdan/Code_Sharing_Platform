@@ -27,7 +27,7 @@
 
 <div class="main-body">
     <div class="body-box" >
-        <tr th:each="data: ${latestTenData}">
+        <tr th:each="data: ${latestData}">
             <pre><span id="load_date"><span th:text="${data.date}"></span></span></pre>
             <pre id="code_snippet"><span th:text="${data.code}"></span></pre>
         </tr>
