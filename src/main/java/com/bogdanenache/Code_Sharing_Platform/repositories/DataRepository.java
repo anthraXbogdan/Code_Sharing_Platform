@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository;
 public interface DataRepository extends JpaRepository<Data, Long> {
 
     Data findByCodeID(String codeID);
+    Data findByUuid(String uuid);
 }

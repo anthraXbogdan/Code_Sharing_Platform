@@ -26,5 +26,11 @@ public class DataServiceImpl implements DataService {
         return dataRepository.findByCodeID(codeID);
     }
 
+    @Override
+    public Data findByUuid(String uuid) {
+        return dataRepository.findByUuid(uuid);
+    }
+
+
 }
 

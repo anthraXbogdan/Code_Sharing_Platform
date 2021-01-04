@@ -9,4 +9,6 @@ public interface DataService {
     void deleteData(Data data);
 
     Data findByCodeID(String codeID);
+
+    Data findByUuid(String uuid);
 }

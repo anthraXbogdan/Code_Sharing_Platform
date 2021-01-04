@@ -1,7 +1,7 @@
 body {
     margin: 0;
     padding: 0;
-    min-width: 700px;
+    min-width: 1200px;
 }
 
 .header {
@@ -158,8 +158,6 @@ body {
     background-color: rgb(50, 145, 113);
     color: white;
 }
-
-
 
 #load_date {
     color: rgb(62, 134, 160);

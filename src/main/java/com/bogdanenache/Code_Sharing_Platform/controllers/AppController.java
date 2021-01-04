@@ -1,6 +1,7 @@
 package com.bogdanenache.Code_Sharing_Platform.controllers;
 
 import com.bogdanenache.Code_Sharing_Platform.entities.Data;
+import com.bogdanenache.Code_Sharing_Platform.entities.EmptyClass;
 import com.bogdanenache.Code_Sharing_Platform.repositories.DataRepository;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -8,9 +9,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 import javax.servlet.http.HttpServletResponse;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.UUID;
 
 @RestController
 public class AppController {
@@ -19,6 +24,11 @@ public class AppController {
     private DataRepository dataRepository;
 
     public AppController() {
+    }
+
+    public String createUuid() {
+        UUID uuid = UUID.randomUUID();
+        return uuid.toString();
     }
 
     public String getDateTimeStamp() {
@@ -33,34 +43,85 @@ public class AppController {
     public  String postJsonData(@RequestBody Data data) throws JSONException {
         data.setDate(getDateTimeStamp());
         data.setCodeID("" + (dataRepository.count() + 1));
+        data.setUuid(createUuid());
+        data.setStartTime(Instant.now());
+        data.setTime2(data.getTime());
         dataRepository.save(data);
 
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("id", data.getCodeID());
+        jsonObject.put("id", data.getUuid());
 
         return jsonObject.toString();
     }
 
-    @GetMapping(value = "/api/code/{id}")
-    public Data getJsonData(HttpServletResponse response, @PathVariable String id) {
+    @GetMapping(value = "/api/code/{uuid}")
+    public String getJsonData(HttpServletResponse response, @PathVariable String uuid) throws JSONException {
         response.addHeader("Content-Type", "application/json");
+        Data data = dataRepository.findByUuid(uuid);
 
-        return dataRepository.findByCodeID(id);
+        Duration duration = Duration.between(data.getStartTime(), Instant.now());
+        long x = duration.toSeconds();
+
+
+        int remainingViews = data.getViews() - 1;
+        long timeAmount = data.getTime2();
+
+        data.setViews(remainingViews);
+        data.setTime(timeAmount - x);
+        dataRepository.save(data);
+
+        JSONObject jsonObject = new JSONObject();
+
+        if (remainingViews >= 0 || data.getTime() >= 0) {
+            jsonObject.put("code", data.getCode());
+            jsonObject.put("date", data.getDate());
+            jsonObject.put("time", data.getTime());
+            jsonObject.put("views", data.getViews());
+
+            return jsonObject.toString();
+        } else {
+            dataRepository.delete(data);
+            response.setStatus(404);
+
+            return null;
+        }
     }
 
     @GetMapping(value = "/api/code/latest")
-    public ArrayList<Data> getLatestData() {
-        ArrayList<Data> latestData = new ArrayList<>();
+    public ArrayList<EmptyClass> getLatestData() {
+        ArrayList<EmptyClass> latestData = new ArrayList<>();
 
         if (dataRepository.count() < 10) {
             for (long i = dataRepository.count(); i > 0; i--) {
-                latestData.add(dataRepository.findByCodeID("" + i));
+                Data data = dataRepository.findByCodeID("" + i);
+
+                if (data.getTime() <= 0 && data.getViews() <= 0) {
+                    EmptyClass emptyClass = new EmptyClass();
+
+                    emptyClass.setCode(data.getCode());
+                    emptyClass.setDate(data.getDate());
+                    emptyClass.setTime(data.getTime());
+                    emptyClass.setViews(data.getViews());
+
+                    latestData.add(emptyClass);
+                }
             }
         } else {
             long start = dataRepository.count() - 10;
 
             for (long i = dataRepository.count(); i > start; i--) {
-                latestData.add(dataRepository.findByCodeID("" + i));
+                Data data = dataRepository.findByCodeID("" + i);
+
+                if (data.getTime() <= 0 && data.getViews() <= 0) {
+                    EmptyClass emptyClass = new EmptyClass();
+
+                    emptyClass.setCode(data.getCode());
+                    emptyClass.setDate(data.getDate());
+                    emptyClass.setTime(data.getTime());
+                    emptyClass.setViews(data.getViews());
+
+                    latestData.add(emptyClass);
+                }
             }
         }
         return latestData;
