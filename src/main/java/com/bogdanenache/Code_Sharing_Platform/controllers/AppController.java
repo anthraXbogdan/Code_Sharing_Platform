@@ -46,7 +46,14 @@ public class AppController {
         data.setUuid(createUuid());
         data.setStartTime(Instant.now());
         data.setTime2(data.getTime());
+        data.setSecret(true);
+
         dataRepository.save(data);
+
+        if (data.getTime() <= 0 && data.getViews() <= 0 && data.isSecret()) {
+            data.setSecret(false);
+            dataRepository.save(data);
+        }
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("id", data.getUuid());
@@ -57,34 +64,45 @@ public class AppController {
     @GetMapping(value = "/api/code/{uuid}")
     public String getJsonData(HttpServletResponse response, @PathVariable String uuid) throws JSONException {
         response.addHeader("Content-Type", "application/json");
+
         Data data = dataRepository.findByUuid(uuid);
 
         Duration duration = Duration.between(data.getStartTime(), Instant.now());
         long x = duration.toSeconds();
-
-
         int remainingViews = data.getViews() - 1;
         long timeAmount = data.getTime2();
 
-        data.setViews(remainingViews);
-        data.setTime(timeAmount - x);
-        dataRepository.save(data);
+        if (data.isSecret()) {
+            data.setViews(remainingViews);
+            data.setTime(timeAmount - x);
+            dataRepository.save(data);
+        }
 
         JSONObject jsonObject = new JSONObject();
 
-        if (remainingViews >= 0 || data.getTime() >= 0) {
+        if (data.getViews() < 0 || data.getTime() < 0 && data.isSecret()) {
+            dataRepository.delete(data);
+            response.setStatus(404);
+
+            return null;
+        }
+        else if (data.getViews() >= 0 || data.getTime() >= 0 && data.isSecret()) {
             jsonObject.put("code", data.getCode());
             jsonObject.put("date", data.getDate());
             jsonObject.put("time", data.getTime());
             jsonObject.put("views", data.getViews());
 
             return jsonObject.toString();
-        } else {
-            dataRepository.delete(data);
-            response.setStatus(404);
-
-            return null;
         }
+        else if (data.getViews() <= 0 && data.getTime() <= 0 && !data.isSecret()) {
+            jsonObject.put("code", data.getCode());
+            jsonObject.put("date", data.getDate());
+            jsonObject.put("time", data.getTime());
+            jsonObject.put("views", data.getViews());
+
+            return jsonObject.toString();
+        }
+        return jsonObject.toString();
     }
 
     @GetMapping(value = "/api/code/latest")

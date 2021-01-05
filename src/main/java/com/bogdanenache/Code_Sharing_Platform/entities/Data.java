@@ -23,6 +23,7 @@ public class Data {
     private long time2;
     private int views;
     private Instant startTime;
+    private boolean secret;
 
     public long getId() {
         return id;
@@ -94,5 +95,13 @@ public class Data {
 
     public void setStartTime(Instant startTime) {
         this.startTime = startTime;
+    }
+
+    public boolean isSecret() {
+        return secret;
+    }
+
+    public void setSecret(boolean secret) {
+        this.secret = secret;
     }
 }
