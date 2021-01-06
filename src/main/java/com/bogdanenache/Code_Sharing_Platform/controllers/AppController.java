@@ -3,6 +3,7 @@ package com.bogdanenache.Code_Sharing_Platform.controllers;
 import com.bogdanenache.Code_Sharing_Platform.entities.Data;
 import com.bogdanenache.Code_Sharing_Platform.entities.EmptyClass;
 import com.bogdanenache.Code_Sharing_Platform.repositories.DataRepository;
+import javassist.NotFoundException;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +13,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -40,20 +40,35 @@ public class AppController {
     }
 
     @PostMapping(value = "/api/code/new", consumes = "application/json")
-    public  String postJsonData(@RequestBody Data data) throws JSONException {
+    public  String postJsonData(@RequestBody Data data) throws JSONException, InterruptedException {
+        data.setTime2(data.getTime());
         data.setDate(getDateTimeStamp());
         data.setCodeID("" + (dataRepository.count() + 1));
         data.setUuid(createUuid());
         data.setStartTime(Instant.now());
-        data.setTime2(data.getTime());
-        data.setSecret(true);
+        data.setTimeRestricted(true);
+        data.setViewsRestricted(true);
 
         dataRepository.save(data);
 
-        if (data.getTime() <= 0 && data.getViews() <= 0 && data.isSecret()) {
-            data.setSecret(false);
+        if (data.getTime() <= 0 && data.getViews() <= 0) {
+            data.setTimeRestricted(false);
+            data.setViewsRestricted(false);
+            dataRepository.save(data);
+        } else if (data.getTime() <= 0 && data.getViews() > 0) {
+            data.setTimeRestricted(false);
+            data.setViewsRestricted(true);
+            dataRepository.save(data);
+        } else if (data.getTime() > 0 && data.getViews() <= 0) {
+            data.setTimeRestricted(true);
+            data.setViewsRestricted(false);
             dataRepository.save(data);
         }
+
+        data.setTime2(data.getTime());
+        dataRepository.save(data);
+
+        Thread.sleep(100);
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("id", data.getUuid());
@@ -67,102 +82,168 @@ public class AppController {
 
         Data data = dataRepository.findByUuid(uuid);
 
-        Duration duration = Duration.between(data.getStartTime(), Instant.now());
-        long x = duration.toSeconds();
-        int remainingViews = data.getViews() - 1;
-        long timeAmount = data.getTime2();
-
-        if (data.isSecret()) {
-            data.setViews(remainingViews);
-            data.setTime(timeAmount - x);
-            dataRepository.save(data);
-        }
-
-        JSONObject jsonObject = new JSONObject();
-
-        if (data.getViews() < 0 || data.getTime() < 0 && data.isSecret()) {
-            dataRepository.delete(data);
+        if (data == null) {
             response.setStatus(404);
-
             return null;
-        }
-        else if (data.getViews() >= 0 || data.getTime() >= 0 && data.isSecret()) {
-            jsonObject.put("code", data.getCode());
-            jsonObject.put("date", data.getDate());
-            jsonObject.put("time", data.getTime());
-            jsonObject.put("views", data.getViews());
+        } else {
+            Duration duration = Duration.between(data.getStartTime(), Instant.now());
+            long x = duration.toSeconds();
+            int remainingViews = data.getViews() - 1;
+            long timeAmount = data.getTime2();
 
-            return jsonObject.toString();
-        }
-        else if (data.getViews() <= 0 && data.getTime() <= 0 && !data.isSecret()) {
-            jsonObject.put("code", data.getCode());
-            jsonObject.put("date", data.getDate());
-            jsonObject.put("time", data.getTime());
-            jsonObject.put("views", data.getViews());
+            if (data.isTimeRestricted() && data.isViewsRestricted()) {
+                data.setViews(remainingViews);
+                data.setTime(timeAmount - x);
+                dataRepository.save(data);
+            }
+            else if (data.isTimeRestricted() && !data.isViewsRestricted()){
+                data.setTime(timeAmount - x);
+                dataRepository.save(data);
+            }
+            else if (!data.isTimeRestricted() && data.isViewsRestricted()) {
+                data.setViews(remainingViews);
+                dataRepository.save(data);
+            }
 
-            return jsonObject.toString();
+            JSONObject jsonObject = new JSONObject();
+
+            if (data.getViews() < 0 || data.getTime() < 0) {
+                dataRepository.delete(data);
+                response.setStatus(404);
+
+                return null;
+            }
+            else {
+                jsonObject.put("code", data.getCode());
+                jsonObject.put("date", data.getDate());
+                jsonObject.put("time", data.getTime());
+                jsonObject.put("views", data.getViews());
+
+                return jsonObject.toString();
+            }
         }
-        return jsonObject.toString();
     }
 
     @GetMapping(value = "/api/code/latest")
     public ArrayList<EmptyClass> getLatestData() {
         ArrayList<EmptyClass> latestData = new ArrayList<>();
+        ArrayList<EmptyClass> latest10Data = new ArrayList<>();
 
         if (dataRepository.count() < 10) {
             for (long i = dataRepository.count(); i > 0; i--) {
                 Data data = dataRepository.findByCodeID("" + i);
 
-                if (data.getTime() <= 0 && data.getViews() <= 0) {
-                    EmptyClass emptyClass = new EmptyClass();
+                if (data != null) {
+                    if (data.getTime() <= 0 && data.getViews() <= 0) {
+                        EmptyClass emptyClass = new EmptyClass();
 
-                    emptyClass.setCode(data.getCode());
-                    emptyClass.setDate(data.getDate());
-                    emptyClass.setTime(data.getTime());
-                    emptyClass.setViews(data.getViews());
+                        emptyClass.setCode(data.getCode());
+                        emptyClass.setDate(data.getDate());
+                        emptyClass.setTime(data.getTime());
+                        emptyClass.setViews(data.getViews());
 
-                    latestData.add(emptyClass);
+                        latestData.add(emptyClass);
+                    }
                 }
             }
+            return latestData;
         } else {
-            long start = dataRepository.count() - 10;
-
-            for (long i = dataRepository.count(); i > start; i--) {
+            for (long i = dataRepository.count(); i > 0; i--) {
                 Data data = dataRepository.findByCodeID("" + i);
 
-                if (data.getTime() <= 0 && data.getViews() <= 0) {
-                    EmptyClass emptyClass = new EmptyClass();
+                if (data != null) {
+                    if (data.getTime() <= 0 && data.getViews() <= 0) {
+                        EmptyClass emptyClass = new EmptyClass();
 
-                    emptyClass.setCode(data.getCode());
-                    emptyClass.setDate(data.getDate());
-                    emptyClass.setTime(data.getTime());
-                    emptyClass.setViews(data.getViews());
+                        emptyClass.setCode(data.getCode());
+                        emptyClass.setDate(data.getDate());
+                        emptyClass.setTime(data.getTime());
+                        emptyClass.setViews(data.getViews());
 
-                    latestData.add(emptyClass);
+                        latestData.add(emptyClass);
+                    }
                 }
             }
+            for (int i = 0; i < 10; i++) {
+                latest10Data.add(latestData.get(i));
+            }
+            return latest10Data;
         }
-        return latestData;
     }
 
-
-    @GetMapping(value = "/code/{id}")
-    public ModelAndView getHtml(HttpServletResponse response, @PathVariable int id) {
+    @GetMapping(value = "/code/{uuid}")
+    public ModelAndView getHtml(HttpServletResponse response, @PathVariable String uuid) throws NotFoundException {
         response.addHeader("Content-Type", "text/html");
 
-        Data data = dataRepository.findByCodeID("" + id);
+        Data data = dataRepository.findByUuid(uuid);
 
-        String codeDate = data.getDate();
-        String codeBody = data.getCode();
-        String replaced = codeBody.replaceAll("<", "&lt");
+        if (data == null) {
+            response.setStatus(404);
+            return null;
+        } else {
+            Duration duration;
+            duration = Duration.between(data.getStartTime(), Instant.now());
+            assert duration != null;
+            long x = duration.toSeconds();
+            int remainingViews = data.getViews() - 1;
+            long timeAmount = data.getTime2();
 
-        ModelAndView model = new ModelAndView();
+            if (data.isTimeRestricted() && data.isViewsRestricted()) {
+                data.setViews(remainingViews);
+                data.setTime(timeAmount - x);
+                dataRepository.save(data);
+            }
+            else if (data.isTimeRestricted() && !data.isViewsRestricted()){
+                data.setTime(timeAmount - x);
+                dataRepository.save(data);
+            }
+            else if (!data.isTimeRestricted() && data.isViewsRestricted()) {
+                data.setViews(remainingViews);
+                dataRepository.save(data);
+            }
 
-        model.addObject("dateTimeStamp", codeDate);
-        model.addObject("codeBody", replaced);
-        model.setViewName("code");
+            ModelAndView model = new ModelAndView();
 
-        return model;
+            if (data.getViews() < 0 || data.getTime() < 0) {
+                dataRepository.delete(data);
+                response.setStatus(404);
+
+                return null;
+            }
+            else {
+                String codeDate = data.getDate();
+                String codeBody = data.getCode();
+                String viewsNo = "" + data.getViews() + " more views allowed";
+                String time = "The code will be available for " + data.getTime() + " seconds";
+                String replaced = codeBody.replaceAll("<", "&lt");
+
+                if (data.isViewsRestricted() && data.isTimeRestricted()) {
+                    model.addObject("time", time);
+                    model.addObject("viewsNo", viewsNo);
+                    model.addObject("dateTimeStamp", codeDate);
+                    model.addObject("codeBody", replaced);
+                    model.setViewName("code");
+                }
+                else if (!data.isViewsRestricted() && !data.isTimeRestricted()) {
+                    model.addObject("dateTimeStamp", codeDate);
+                    model.addObject("codeBody", replaced);
+                    model.setViewName("noRestrictions");
+                }
+                else if (!data.isViewsRestricted() && data.isTimeRestricted()) {
+                    model.addObject("time", time);
+                    model.addObject("dateTimeStamp", codeDate);
+                    model.addObject("codeBody", replaced);
+                    model.setViewName("withTimeRestriction");
+                }
+                else if (data.isViewsRestricted() && !data.isTimeRestricted()) {
+                    model.addObject("viewsNo", viewsNo);
+                    model.addObject("dateTimeStamp", codeDate);
+                    model.addObject("codeBody", replaced);
+                    model.setViewName("withViewsRestriction");
+                }
+                return model;
+            }
+        }
     }
 
     @GetMapping(value = "/code/new")
@@ -175,26 +256,53 @@ public class AppController {
         return model;
     }
 
-
     @GetMapping(value = "/code/latest")
     public ModelAndView latestCode() {
         ModelAndView model = new ModelAndView();
 
-        ArrayList<Data> latestData = new ArrayList<>();
+        ArrayList<EmptyClass> latestData = new ArrayList<>();
+        ArrayList<EmptyClass> latest10Data = new ArrayList<>();
 
         if (dataRepository.count() < 10) {
             for (long i = dataRepository.count(); i > 0; i--) {
-                latestData.add(dataRepository.findByCodeID("" + i));
+                Data data = dataRepository.findByCodeID("" + i);
+
+                if (data != null) {
+                    if (data.getTime() <= 0 && data.getViews() <= 0) {
+                        EmptyClass emptyClass = new EmptyClass();
+
+                        emptyClass.setCode(data.getCode());
+                        emptyClass.setDate(data.getDate());
+                        emptyClass.setTime(data.getTime());
+                        emptyClass.setViews(data.getViews());
+
+                        latestData.add(emptyClass);
+                    }
+                }
             }
+            model.addObject("latestData", latestData);
         } else {
-            long start = dataRepository.count() - 10;
+            for (long i = dataRepository.count(); i > 0; i--) {
+                Data data = dataRepository.findByCodeID("" + i);
 
-            for (long i = dataRepository.count(); i > start; i--) {
-                latestData.add(dataRepository.findByCodeID("" + i));
+                if (data != null) {
+                    if (data.getTime() <= 0 && data.getViews() <= 0) {
+                        EmptyClass emptyClass = new EmptyClass();
+
+                        emptyClass.setCode(data.getCode());
+                        emptyClass.setDate(data.getDate());
+                        emptyClass.setTime(data.getTime());
+                        emptyClass.setViews(data.getViews());
+
+                        latestData.add(emptyClass);
+                    }
+                }
             }
+            for (int i = 0; i < 10; i++) {
+                latest10Data.add(latestData.get(i));
+            }
+            model.addObject("latestData", latest10Data);
         }
-
-        model.addObject("latestData", latestData);
         model.setViewName("latestCodes");
         return model;
     }

@@ -31,6 +31,5 @@ public class DataServiceImpl implements DataService {
         return dataRepository.findByUuid(uuid);
     }
 
-
 }
 

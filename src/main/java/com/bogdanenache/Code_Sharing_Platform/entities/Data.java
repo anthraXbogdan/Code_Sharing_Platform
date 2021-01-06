@@ -23,7 +23,8 @@ public class Data {
     private long time2;
     private int views;
     private Instant startTime;
-    private boolean secret;
+    private boolean isTimeRestricted;
+    private boolean isViewsRestricted;
 
     public long getId() {
         return id;
@@ -97,11 +98,19 @@ public class Data {
         this.startTime = startTime;
     }
 
-    public boolean isSecret() {
-        return secret;
+    public boolean isTimeRestricted() {
+        return isTimeRestricted;
     }
 
-    public void setSecret(boolean secret) {
-        this.secret = secret;
+    public void setTimeRestricted(boolean timeRestricted) {
+        isTimeRestricted = timeRestricted;
+    }
+
+    public boolean isViewsRestricted() {
+        return isViewsRestricted;
+    }
+
+    public void setViewsRestricted(boolean viewsRestricted) {
+        isViewsRestricted = viewsRestricted;
     }
 }
